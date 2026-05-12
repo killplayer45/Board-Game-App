@@ -1,0 +1,30 @@
+
+{
+  "project_info": {
+    "project_number": "605508635148",
+    "project_id": "board-gamer-app-927cb",
+    "storage_bucket": "board-gamer-app-927cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605508635148:android:08e09017e8e6d8416fbc29",
+        "android_client_info": {
+          "package_name": "com.example.board_gamer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbBx-F_A1cCh4zQeXrb0ercHUuggZEhZw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
