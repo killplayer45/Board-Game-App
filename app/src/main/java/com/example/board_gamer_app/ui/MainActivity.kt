@@ -7,7 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.example.board_gamer_app.ui.theme.BoardGamerAppTheme
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
+import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
 import com.example.board_gamer_app.ui.viewmodels.EventViewModel
+import com.example.board_gamer_app.ui.viewmodels.SuggestionsViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,9 +19,11 @@ class MainActivity : ComponentActivity() {
         //Creation of ViewModels
         val authViewModel: AuthViewModel by viewModels()
         val eventViewModel: EventViewModel by viewModels()
+        val suggestionsViewModel: SuggestionsViewModel by viewModels()
+        val chatViewModel: ChatViewModel by viewModels()
         setContent{
-            BoardGamerAppTheme() {
-                    AppNavigation(authViewModel = authViewModel, eventViewModel = eventViewModel)
+            BoardGamerAppTheme {
+                    AppNavigation(authViewModel = authViewModel, eventViewModel = eventViewModel, suggestionsViewModel = suggestionsViewModel, chatViewModel = chatViewModel)
             }
         }
     }

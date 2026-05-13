@@ -31,8 +31,6 @@ class EventViewModel : ViewModel() {
         private set
     var time by mutableStateOf("")
         private set
-    var location by mutableStateOf("")
-        private set
     var showDialog by mutableStateOf(false) //Holding boolean value for showing dialog for adding an event
         private set
     var showCalendar by mutableStateOf(false) //Holding boolean value for showing calendar component
@@ -145,24 +143,39 @@ class EventViewModel : ViewModel() {
         val sortedEvents = _events.value.sortedBy { it.dateTimestamp }
         val currentIndex = sortedEvents.indexOfFirst { it.eventID == eventID }
         val previousEvent = if(currentIndex > 0) sortedEvents[currentIndex - 1] else null
+        val nextEvent = if(currentIndex < sortedEvents.size - 1) sortedEvents[currentIndex + 1] else null
         val wasGameMasterInPreviousEvent = previousEvent?.gameMaster == currentUsername
+        val isGameMasterInNextEvent = nextEvent?.gameMaster == currentUsername
 
-        db.collection("events")
-            .document(eventID)
-            .get()
-            .addOnSuccessListener { _ ->
-                if(currentEvent.gameMaster != currentUsername &&
-                    currentEvent.gameMaster.isEmpty() &&
-                    currentEvent.playersAttending.contains(currentUsername) &&
-                    !wasGameMasterInPreviousEvent){
+        if(currentEvent.gameMaster != currentUsername &&
+            currentEvent.playersAttending.contains(currentUsername) &&
+            !wasGameMasterInPreviousEvent &&
+            !isGameMasterInNextEvent){
+            val userID = auth.currentUser?.uid ?: return
+            db.collection("users")
+                .document(userID)
+                .get()
+                .addOnSuccessListener { document ->
+                    val user = document.toObject(User::class.java)
+
                     db.collection("events")
                         .document(eventID)
-                        .update("gameMaster", currentUsername)
-                } else {
-                    db.collection("events")
-                        .document(eventID)
-                        .update("gameMaster", "")
+                        .update(mapOf(
+                            "gameMaster" to currentUsername,
+                            "gameMasterStreet" to (user?.street ?: ""),
+                            "gameMasterZip" to (user?.zip ?: ""),
+                            "gameMasterCity" to (user?.city ?: "")
+                        ))
                 }
-            }
+        } else {
+            db.collection("events")
+                .document(eventID)
+                .update(mapOf(
+                    "gameMaster" to "",
+                    "gameMasterStreet" to "",
+                    "gameMasterZip" to "",
+                    "gameMasterCity" to ""
+                ))
+        }
     }
 }

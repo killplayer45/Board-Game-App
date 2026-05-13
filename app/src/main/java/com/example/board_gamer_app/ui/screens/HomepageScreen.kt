@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,11 +59,12 @@ import com.example.board_gamer_app.R
 import com.example.board_gamer_app.data.model.Event
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
+import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
 import com.example.board_gamer_app.ui.viewmodels.EventViewModel
 import java.util.Calendar
 
 @Composable
-fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, eventViewModel: EventViewModel, modifier: Modifier = Modifier) {
+fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, eventViewModel: EventViewModel, chatViewModel: ChatViewModel, modifier: Modifier = Modifier) {
     //AuthState is saved and observed
     val authState = authViewModel.authState.collectAsStateWithLifecycle()
     //used for accessing resources like Toast
@@ -67,8 +72,9 @@ fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, e
     //LaunchedEffect enables side effects like navigation or Toast when authState.value changes (after composition)
     LaunchedEffect(authState.value) {
         when(authState.value) {
-            is AuthState.Authenticated -> eventViewModel.loadCurrentUser()
-            is AuthState.Unauthenticated -> navController.navigate("login")
+            is AuthState.Authenticated -> { eventViewModel.loadCurrentUser()
+            chatViewModel.reload() }
+            is AuthState.Unauthenticated -> navController.navigate("welcome")
             is AuthState.Error -> Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
             else -> Unit
         }
@@ -91,7 +97,7 @@ fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, e
             LazyColumn {
                 items(events) {event ->
                     EventSection(event = event,
-                        onClick = { navController.navigate("")},
+                        onClick = { navController.navigate("event_detail/${event.eventID}")},
                         eventViewModel = eventViewModel)
                 }
             }
@@ -219,9 +225,10 @@ fun NavBar(navController: NavController) {
         NavigationBarItem(
             selected = currentScreen == "homepage",
             onClick = { navController.navigate("homepage")},
+            label = { Text("Kalender") },
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.event_note_48dp_000000_fill0_wght400_grad0_opsz48),
+                    Icons.Default.CalendarMonth,
                     contentDescription = "Events Icon"
                 )
             }
@@ -229,9 +236,9 @@ fun NavBar(navController: NavController) {
         NavigationBarItem(
             selected = currentScreen == "chat",
             onClick = { navController.navigate("chat")},
+            label = { Text("Chat") },
             icon = {
-                Icon(
-                    painter = painterResource(R.drawable.chat_48dp_000000_fill0_wght400_grad0_opsz48),
+                Icon(Icons.Default.ChatBubble,
                     contentDescription = "Chat Icon"
                 )
             }
@@ -239,9 +246,9 @@ fun NavBar(navController: NavController) {
         NavigationBarItem(
             selected = currentScreen == "settings",
             onClick = { navController.navigate("settings")},
+            label = { Text("Einstellungen") },
             icon = {
-                Icon(
-                    painter = painterResource(R.drawable.settings_48dp_000000_fill0_wght400_grad0_opsz48),
+                Icon(Icons.Default.Settings,
                     contentDescription = "Einstellungen Icon"
                 )
             }

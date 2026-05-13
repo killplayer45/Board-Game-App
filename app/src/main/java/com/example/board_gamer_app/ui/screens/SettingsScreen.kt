@@ -31,9 +31,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
+import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
 
 @Composable
-fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, modifier: Modifier = Modifier) {
+fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, chatViewModel: ChatViewModel, modifier: Modifier = Modifier) {
     //AuthState is saved and observed
     val authState = authViewModel.authState.collectAsStateWithLifecycle()
     //used for accessing resources like Toast
@@ -52,14 +53,14 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, m
         Column(modifier = modifier
             .fillMaxSize()
             .padding(innerPadding)) {
-            HeaderSection(authViewModel)
+            HeaderSection(authViewModel, chatViewModel)
             ProfileInformation(authViewModel)
         }
     }
 }
 
 @Composable
-fun HeaderSection(authViewModel: AuthViewModel) {
+fun HeaderSection(authViewModel: AuthViewModel, chatViewModel: ChatViewModel) {
     Spacer(modifier = Modifier.height(40.dp))
     Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -67,7 +68,7 @@ fun HeaderSection(authViewModel: AuthViewModel) {
             fontSize = 30.sp
         )
         Button(onClick = {
-            authViewModel.signout()
+            authViewModel.signout(chatViewModel)
         }) { Text(text = "Logout") }
     }
 }

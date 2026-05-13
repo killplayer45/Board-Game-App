@@ -145,8 +145,10 @@ class AuthViewModel : ViewModel(){
             }
     }
 
-    fun signout() {
+    fun signout(chatViewModel: ChatViewModel) {
         auth.signOut()
+        chatViewModel.messages.clear()
+        chatViewModel.currentUsername = ""
         _authState.value = AuthState.Unauthenticated
     }
 

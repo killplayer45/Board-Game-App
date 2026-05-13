@@ -6,7 +6,10 @@ data class Event(
     val time: String = "",
     val createdByUserID: String = "",
     val location: String = "",
-    var playersAttending: ArrayList<String> = arrayListOf(),
-    var playersNotAttending: ArrayList<String> = arrayListOf(),
-    var gameMaster: String = ""
+    val playersAttending: ArrayList<String> = arrayListOf(),
+    val playersNotAttending: ArrayList<String> = arrayListOf(),
+    val gameMaster: String = "",
+    val gameMasterStreet: String = "",
+    val gameMasterZip: String = "",
+    val gameMasterCity: String = "",
 )
