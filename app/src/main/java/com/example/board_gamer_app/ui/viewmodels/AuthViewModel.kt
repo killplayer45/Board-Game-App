@@ -1,5 +1,10 @@
 package com.example.board_gamer_app.ui.viewmodels
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -10,20 +15,16 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.ByteArrayOutputStream
 
-//class for handling the authentication of users
-class AuthViewModel : ViewModel(){
-    //Manages login/registration/logout via Firebase Authentication
+class AuthViewModel : ViewModel() {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    //State of authentication, updated automatically whenever changes happen
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
-    //State of authentication, which can be read by other composables
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
-    //Manages writing/reading data
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
-    //with mutableStateOf changes are tracked and UI gets updated
+
     var email by mutableStateOf("")
-        private set     //with private set only ViewModel can change the value
+        private set
     var password by mutableStateOf("")
         private set
     var city by mutableStateOf("")
@@ -34,10 +35,13 @@ class AuthViewModel : ViewModel(){
         private set
     var username by mutableStateOf("")
         private set
+    var profileImageUrl by mutableStateOf("")
+        private set
     var passwordCheck by mutableStateOf("")
         private set
     var showPasswordDialog by mutableStateOf(false)
-    //Functions for changing the values of the variables
+    var isDarkMode by mutableStateOf(false)
+
     fun onEmailChange(value: String) { email = value }
     fun onPasswordChange(value: String) { password = value }
     fun onCityChange(value: String) { city = value }
@@ -46,15 +50,18 @@ class AuthViewModel : ViewModel(){
     fun onUsernameChange(value: String) { username = value }
     fun onPasswordCheckChange(value: String) { passwordCheck = value }
     fun onShowPasswordDialog() { showPasswordDialog = true }
-    fun onDismissPasswordDialog() { showPasswordDialog = false
-    password = ""
-    passwordCheck = "" }
+    fun onDismissPasswordDialog() { 
+        showPasswordDialog = false
+        password = ""
+        passwordCheck = "" 
+    }
+    fun toggleDarkMode(enabled: Boolean) { isDarkMode = enabled }
 
-    //checks if user is logged in when app starts
     init {
         checkAuthStatus()
         loadCurrentUser()
     }
+
     fun checkAuthStatus() {
         if(auth.currentUser == null) {
             _authState.value = AuthState.Unauthenticated
@@ -76,41 +83,37 @@ class AuthViewModel : ViewModel(){
                 zip = user?.zip ?: ""
                 street = user?.street ?: ""
                 password = user?.password ?: ""
+                profileImageUrl = user?.profileImageUrl ?: ""
             }
     }
 
     fun login() {
-        //Validation
         if(email.isEmpty() || password.isEmpty()) {
             _authState.value = AuthState.Error("E-Mail oder Passwort fehlt")
             return
         }
-        //Loading State (for displaying on Screen)
         _authState.value = AuthState.Loading
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
                     loadCurrentUser()
-                    _authState.value = AuthState.Authenticated //User is navigated to Homepage
+                    _authState.value = AuthState.Authenticated
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message?:"Etwas ist schiefgelaufen")
                 }
             }
     }
+
     fun signup() {
-        //Validation
         if(email.isEmpty() || password.isEmpty() || username.isEmpty() || city.isEmpty() || zip.isEmpty() || street.isEmpty()) {
             _authState.value = AuthState.Error("Es fehlen Informationen!")
             return
         }
-        //Compare both passwords
         if(password != passwordCheck) {
             _authState.value = AuthState.Error("Das Passwort stimmt nicht überein")
             return
         }
-        //Loading State (displaying on Screen)
         _authState.value = AuthState.Loading
-        //Create User in Firestore Auth
         auth.createUserWithEmailAndPassword(email.trim(), password.trim())
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
@@ -123,19 +126,19 @@ class AuthViewModel : ViewModel(){
 
     private fun saveUserToFirestore() {
         val userID = auth.currentUser?.uid ?: return
-        //Variable that references a User Object (of User data class)
         val user = User(
-            userID = userID,    //Firebase Auth uid
+            userID = userID,
             username = username.trim(),
             email = email.trim(),
             city = city.trim(),
             zip = zip.trim(),
             street = street.trim(),
-            password = password.trim()
+            password = password.trim(),
+            profileImageUrl = profileImageUrl
         )
         db.collection("users")
-            .document(userID)   //userID as name
-            .set(user)                         //creates new document
+            .document(userID)
+            .set(user)
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
                     _authState.value = AuthState.Authenticated
@@ -147,8 +150,7 @@ class AuthViewModel : ViewModel(){
 
     fun signout(chatViewModel: ChatViewModel) {
         auth.signOut()
-        chatViewModel.messages.clear()
-        chatViewModel.currentUsername = ""
+        chatViewModel.reload()
         _authState.value = AuthState.Unauthenticated
     }
 
@@ -162,7 +164,8 @@ class AuthViewModel : ViewModel(){
                 "city" to city,
                 "zip" to zip,
                 "street" to street,
-                "password" to password
+                "password" to password,
+                "profileImageUrl" to profileImageUrl
             ))
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
@@ -171,6 +174,32 @@ class AuthViewModel : ViewModel(){
                     _authState.value = AuthState.Error(task.exception?.message ?: "Daten konnten nicht geändert werden")
                 }
             }
+    }
+
+    fun uploadProfilePicture(context: Context, uri: Uri) {
+        _authState.value = AuthState.Loading
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            
+            // Verkleinern auf max 300x300 für Firestore Base64 (Limit beachten)
+            val scaledBitmap = if (bitmap.width > 300 || bitmap.height > 300) {
+                val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+                if (ratio > 1) Bitmap.createScaledBitmap(bitmap, 300, (300 / ratio).toInt(), true)
+                else Bitmap.createScaledBitmap(bitmap, (300 * ratio).toInt(), 300, true)
+            } else bitmap
+
+            val outputStream = ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
+            val bytes = outputStream.toByteArray()
+            val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+            
+            profileImageUrl = "data:image/jpeg;base64,$base64String"
+            updateProfile()
+            _authState.value = AuthState.Info("Profilbild wurde aktualisiert!")
+        } catch (e: Exception) {
+            _authState.value = AuthState.Error("Fehler beim Verarbeiten des Bildes")
+        }
     }
 
     fun resetPassword() {
@@ -182,7 +211,7 @@ class AuthViewModel : ViewModel(){
         auth.sendPasswordResetEmail(email.trim())
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
-                    _authState.value = AuthState.Info("Email zum Zurücksetzen des Passworts wurde verschickt!")
+                    _authState.value = AuthState.Info("Email verschickt!")
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Email konnte nicht gesendet werden")
                 }
@@ -202,15 +231,12 @@ class AuthViewModel : ViewModel(){
             if(task.isSuccessful) {
                 _authState.value = AuthState.Info("Passwort wurde geändert!")
             } else {
-                if(task.exception?.message?.contains("recent") == true) {
-                    _authState.value = AuthState.Error("Bitte erneut einloggen, um das Passwort zu ändern")
-                }
                 _authState.value = AuthState.Error(task.exception?.message ?: "Passwort konnte nicht geändert werden")
             }
         }
     }
 }
-//sealed class holds the possible States and provides type-safety, objects make sure that the same instance is used
+
 sealed class AuthState{
     object Authenticated: AuthState()
     object Unauthenticated: AuthState()

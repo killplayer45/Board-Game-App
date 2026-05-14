@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -29,6 +30,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
+import android.net.Uri
+import androidx.core.content.FileProvider
+import java.io.File
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
 import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
@@ -39,6 +62,31 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
     val authState = authViewModel.authState.collectAsStateWithLifecycle()
     //used for accessing resources like Toast
     val context = LocalContext.current
+    
+    // Launcher for Gallery
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { authViewModel.uploadProfilePicture(context, it) }
+    }
+
+    // Temp file for Camera
+    val tempFile = File(context.cacheDir, "temp_image.jpg")
+    val tempUri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        tempFile
+    )
+
+    // Launcher for Camera
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            authViewModel.uploadProfilePicture(context, tempUri)
+        }
+    }
+
     //LaunchedEffect enables side effects like navigation or Toast when authState.value changes (after composition)
     LaunchedEffect(authState.value) {
         when(authState.value) {
@@ -54,6 +102,69 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
             .fillMaxSize()
             .padding(innerPadding)) {
             HeaderSection(authViewModel, chatViewModel)
+            
+            // Dark Mode Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Dark Mode", fontSize = 18.sp)
+                Switch(
+                    checked = authViewModel.isDarkMode,
+                    onCheckedChange = { authViewModel.toggleDarkMode(it) }
+                )
+            }
+
+            // Profile Image Section
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (authViewModel.profileImageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(authViewModel.profileImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Profilbild",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    
+                    if (authViewModel.profileImageUrl.isEmpty()) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(100.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Row(
+                    modifier = Modifier.padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    IconButton(onClick = { galleryLauncher.launch("image/*") }) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = "Galerie")
+                    }
+                    IconButton(onClick = { cameraLauncher.launch(tempUri) }) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = "Kamera")
+                    }
+                }
+            }
+
             ProfileInformation(authViewModel)
         }
     }

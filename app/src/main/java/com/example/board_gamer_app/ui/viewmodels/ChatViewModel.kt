@@ -15,6 +15,7 @@ class ChatViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
 
     var currentUsername = ""
+    var currentProfileImageUrl = ""
 
     val messages = mutableStateListOf<Message>()
 
@@ -30,6 +31,7 @@ class ChatViewModel : ViewModel() {
             .addOnSuccessListener { document ->
                 val user = document.toObject(User::class.java)
                 currentUsername = user?.username ?: "Nicht gefunden"
+                currentProfileImageUrl = user?.profileImageUrl ?: ""
                 observeMessages()
             }
     }
@@ -65,6 +67,7 @@ class ChatViewModel : ViewModel() {
             text = text.trim(),
             time = timeString,
             senderId = userID,
+            profileImageUrl = currentProfileImageUrl,
             timestamp = System.currentTimeMillis()
         )
         docRef.set(message)

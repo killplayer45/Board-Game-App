@@ -7,5 +7,6 @@ data class User(
     val city: String = "",
     val zip: String="",
     val street: String = "",
-    val password: String = ""
+    val password: String = "",
+    val profileImageUrl: String = ""
 )

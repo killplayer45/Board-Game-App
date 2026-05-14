@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
         val suggestionsViewModel: SuggestionsViewModel by viewModels()
         val chatViewModel: ChatViewModel by viewModels()
         setContent{
-            BoardGamerAppTheme {
+            BoardGamerAppTheme(darkTheme = authViewModel.isDarkMode) {
                     AppNavigation(authViewModel = authViewModel, eventViewModel = eventViewModel, suggestionsViewModel = suggestionsViewModel, chatViewModel = chatViewModel)
             }
         }
