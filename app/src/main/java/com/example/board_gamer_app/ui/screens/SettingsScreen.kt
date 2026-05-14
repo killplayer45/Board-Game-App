@@ -1,5 +1,6 @@
 package com.example.board_gamer_app.ui.screens
 
+import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,7 +51,18 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import android.net.Uri
+import android.os.Build
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.io.File
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
@@ -62,6 +74,7 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
     val authState = authViewModel.authState.collectAsStateWithLifecycle()
     //used for accessing resources like Toast
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
     
     // Launcher for Gallery
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -100,7 +113,8 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
             innerPadding ->
         Column(modifier = modifier
             .fillMaxSize()
-            .padding(innerPadding)) {
+            .padding(innerPadding)
+            .verticalScroll(scrollState)) {
             HeaderSection(authViewModel, chatViewModel)
             
             // Dark Mode Toggle
@@ -131,14 +145,9 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
                     contentAlignment = Alignment.Center
                 ) {
                     if (authViewModel.profileImageUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(authViewModel.profileImageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Profilbild",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                        Base64Image(
+                            base64 = authViewModel.profileImageUrl,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                     
@@ -156,10 +165,34 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
                     modifier = Modifier.padding(top = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    IconButton(onClick = { galleryLauncher.launch("image/*") }) {
+                    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()) {
+                        isGranted ->
+                        if(isGranted) {
+                            galleryLauncher.launch("image/*")
+                        } else {
+                            Toast.makeText(context, "Berechtigung verweigert", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    IconButton(onClick = {
+                        val permission = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            android.Manifest.permission.READ_MEDIA_IMAGES}
+                        else {
+                            android.Manifest.permission.READ_EXTERNAL_STORAGE
+                        }
+                        galleryPermissionLauncher.launch(permission)
+                    }) {
                         Icon(Icons.Default.PhotoLibrary, contentDescription = "Galerie")
                     }
-                    IconButton(onClick = { cameraLauncher.launch(tempUri) }) {
+                    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestPermission()) { isGranted ->
+                        if(isGranted) {
+                            cameraLauncher.launch(tempUri)
+                        } else {
+                            Toast.makeText(context, "Berechtigung verweigert", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    IconButton(onClick = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }) {
                         Icon(Icons.Default.PhotoCamera, contentDescription = "Kamera")
                     }
                 }
@@ -236,7 +269,6 @@ fun ProfileInformation(authViewModel: AuthViewModel) {
             Text("Speichern")
         }
     }
-    Spacer(modifier = Modifier.height(20.dp))
     if(authViewModel.showPasswordDialog) {
         PasswordChangeDialog(authViewModel = authViewModel,
             onDismiss = { authViewModel.onDismissPasswordDialog() })
@@ -247,6 +279,7 @@ fun ProfileInformation(authViewModel: AuthViewModel) {
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth())
     }
+    Spacer(modifier = Modifier.height(20.dp))
 }
 
 @Composable
@@ -284,4 +317,26 @@ fun PasswordChangeDialog(authViewModel: AuthViewModel, onDismiss: () -> Unit) {
             Text(text = "Abbrechen")
         }}
     )
+}
+
+@Composable
+fun Base64Image(base64: String, modifier: Modifier = Modifier) {
+    val bitmap = remember(base64) {
+        try {
+            val pureBase64 = base64.substringAfter("base64,")
+            val bytes = android.util.Base64.decode(pureBase64, android.util.Base64.NO_WRAP)
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            bmp?.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
+    if(bitmap != null) {
+        Image(
+            bitmap = bitmap,
+            contentDescription = "Profilbild",
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    }
 }

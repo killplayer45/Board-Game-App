@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayOutputStream
+import androidx.core.graphics.scale
+import androidx.core.graphics.createBitmap
 
 class AuthViewModel : ViewModel() {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -82,7 +84,6 @@ class AuthViewModel : ViewModel() {
                 city = user?.city ?: ""
                 zip = user?.zip ?: ""
                 street = user?.street ?: ""
-                password = user?.password ?: ""
                 profileImageUrl = user?.profileImageUrl ?: ""
             }
     }
@@ -133,7 +134,6 @@ class AuthViewModel : ViewModel() {
             city = city.trim(),
             zip = zip.trim(),
             street = street.trim(),
-            password = password.trim(),
             profileImageUrl = profileImageUrl
         )
         db.collection("users")
@@ -164,7 +164,6 @@ class AuthViewModel : ViewModel() {
                 "city" to city,
                 "zip" to zip,
                 "street" to street,
-                "password" to password,
                 "profileImageUrl" to profileImageUrl
             ))
             .addOnCompleteListener { task ->
@@ -178,28 +177,60 @@ class AuthViewModel : ViewModel() {
 
     fun uploadProfilePicture(context: Context, uri: Uri) {
         _authState.value = AuthState.Loading
+        android.util.Log.d("Upload", "URI: $uri")
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            
-            // Verkleinern auf max 300x300 für Firestore Base64 (Limit beachten)
-            val scaledBitmap = if (bitmap.width > 300 || bitmap.height > 300) {
-                val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
-                if (ratio > 1) Bitmap.createScaledBitmap(bitmap, 300, (300 / ratio).toInt(), true)
-                else Bitmap.createScaledBitmap(bitmap, (300 * ratio).toInt(), 300, true)
-            } else bitmap
+            android.util.Log.d("Upload", "Stream null? ${inputStream == null}")
+            inputStream?.use { stream ->
+                val bitmap = BitmapFactory.decodeStream(stream)
+                android.util.Log.d("Upload", "Bitmap null? ${bitmap == null}")
+                if(bitmap == null) {
+                    _authState.value = AuthState.Error("Bitmap nicht vorhanden")
+                    return@use
+                }
+                // Verkleinern auf max 300x300 für Firestore Base64 (Limit beachten)
+                val scaledBitmap = if (bitmap.width > 300 || bitmap.height > 300) {
+                    val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
+                    if (ratio > 1) bitmap.scale(300, (300 / ratio).toInt())
+                    else bitmap.scale((300 * ratio).toInt(), 300)
+                } else bitmap
 
-            val outputStream = ByteArrayOutputStream()
-            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
-            val bytes = outputStream.toByteArray()
-            val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
-            
-            profileImageUrl = "data:image/jpeg;base64,$base64String"
-            updateProfile()
-            _authState.value = AuthState.Info("Profilbild wurde aktualisiert!")
+                val outputStream = ByteArrayOutputStream()
+                scaledBitmap.compress(Bitmap.CompressFormat.PNG, 60, outputStream)
+                val bytes = outputStream.toByteArray()
+                val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+
+                val dataUri = "data:image/jpeg;base64,$base64String"
+                profileImageUrl = dataUri
+                updateProfilePictureInFirestore(dataUri)
+            }
         } catch (e: Exception) {
-            _authState.value = AuthState.Error("Fehler beim Verarbeiten des Bildes")
+            android.util.Log.d("upload", "Fehler ${e.message}", e)
+            _authState.value = AuthState.Error(e.message ?: "Fehler beim Verarbeiten des Bildes")
         }
+    }
+
+    fun updateProfilePictureInFirestore(imageData: String) {
+        val userID = auth.currentUser?.uid ?: return
+        db.collection("users")
+            .document(userID)
+            .update("profileImageUrl", imageData)
+            .addOnSuccessListener {
+                _authState.value = AuthState.Info("Profilbild wurde aktualisiert")
+            }
+            .addOnFailureListener { e ->
+                _authState.value = AuthState.Error(e.message ?: "Profilbild konnte nicht geändert werden")
+            }
+    }
+
+    fun loadUserProfilePicture(userID: String, onResult: (String) -> Unit) {
+        db.collection("users")
+            .document(userID)
+            .get()
+            .addOnSuccessListener { document ->
+                val imageUrl = document.getString("profileImageUrl") ?: ""
+                onResult(imageUrl)
+            }
     }
 
     fun resetPassword() {

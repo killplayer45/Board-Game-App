@@ -164,7 +164,8 @@ class EventViewModel : ViewModel() {
                             "gameMaster" to currentUsername,
                             "gameMasterStreet" to (user?.street ?: ""),
                             "gameMasterZip" to (user?.zip ?: ""),
-                            "gameMasterCity" to (user?.city ?: "")
+                            "gameMasterCity" to (user?.city ?: ""),
+                            "gameMasterProfilePicture" to (user?.profileImageUrl ?: "")
                         ))
                 }
         } else {

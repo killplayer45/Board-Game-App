@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
@@ -116,7 +120,7 @@ fun HomepageHeader(eventViewModel: EventViewModel, modifier: Modifier = Modifier
             text = "Termine",
             fontSize = 40.sp
         )
-        FloatingActionButton(onClick = { eventViewModel.onShowDialog()}, containerColor = Color(0xFFfcba03), contentColor = Color.White, modifier = Modifier.padding(start= 40.dp)) {
+        FloatingActionButton(onClick = { eventViewModel.onShowDialog()}, containerColor = Color(0xFFfcba03), contentColor = Color.White, modifier = Modifier.padding(start = 60.dp).scale(0.8F)) {
             Icon(painter = painterResource(R.drawable.add_48dp_000000_fill0_wght400_grad0_opsz48),
                 contentDescription = "Termin hinzufügen Button")
         }
@@ -188,7 +192,7 @@ fun EventSection(event: Event, onClick: () -> Unit, eventViewModel: EventViewMod
                     .background(color = backgroundColorAttending)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.thumb_up_48dp_000000_fill0_wght400_grad0_opsz48),
+                    Icons.Default.ThumbUp,
                     contentDescription = "Daumen hoch",
                     modifier = Modifier
                         .size(60.dp)
@@ -207,7 +211,7 @@ fun EventSection(event: Event, onClick: () -> Unit, eventViewModel: EventViewMod
                     .background(color = backgroundColorNotAttending)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.thumb_down_48dp_000000_fill0_wght400_grad0_opsz48),
+                    Icons.Default.ThumbDown,
                     contentDescription = "Daumen runter",
                     modifier = Modifier
                         .size(60.dp)

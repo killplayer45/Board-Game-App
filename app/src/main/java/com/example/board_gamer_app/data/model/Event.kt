@@ -12,4 +12,5 @@ data class Event(
     val gameMasterStreet: String = "",
     val gameMasterZip: String = "",
     val gameMasterCity: String = "",
+    val gameMasterProfilePicture: String = ""
 )

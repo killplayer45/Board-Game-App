@@ -173,26 +173,38 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.padding(8.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        if(event.gameMaster.isNotEmpty()) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                if (authViewModel.profileImageUrl.isNotEmpty()) {
+                                    Base64Image(
+                                        base64 = authViewModel.profileImageUrl,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            Text(event.gameMaster, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Text(
-                                "${event.gameMasterStreet}, ${event.gameMasterZip} ${event.gameMasterCity}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
+                            if(event.gameMaster.isNotEmpty()) {
+                                Text(
+                                    event.gameMaster,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "${event.gameMasterStreet}, ${event.gameMasterZip} ${event.gameMasterCity}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            } else {
+                                Text(text = "Kein Spielleiter eingetragen",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface)
+                            }
                         }
                     }
 

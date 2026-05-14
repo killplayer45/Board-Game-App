@@ -68,7 +68,7 @@ fun ChatScreen(navController: NavController, authViewModel: AuthViewModel, chatV
                     )
                 }
                 items(messages) { message ->
-                    ChatBubble(message)
+                    ChatBubble(message, authViewModel)
                 }
             }
 
@@ -111,14 +111,14 @@ fun ChatScreen(navController: NavController, authViewModel: AuthViewModel, chatV
 }
 
 @Composable
-fun ChatBubble(message: Message) {
+fun ChatBubble(message: Message, authViewModel: AuthViewModel) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isMe) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom
     ) {
         if (!message.isMe) {
-            UserAvatarWithInfo(message)
+            UserAvatarWithInfo(message, authViewModel)
             Spacer(modifier = Modifier.width(8.dp))
         }
 
@@ -149,30 +149,34 @@ fun ChatBubble(message: Message) {
 
         if (message.isMe) {
             Spacer(modifier = Modifier.width(8.dp))
-            UserAvatarWithInfo(message)
+            UserAvatarWithInfo(message, authViewModel)
         }
     }
 }
 
 @Composable
-fun UserAvatarWithInfo(message: Message) {
+fun UserAvatarWithInfo(message: Message, authViewModel: AuthViewModel) {
+    var senderImageUrl by remember (message.senderId) { mutableStateOf("")}
+    LaunchedEffect(message.senderId) {
+        if(message.senderId.isNotEmpty()) {
+            authViewModel.loadUserProfilePicture(message.senderId) { url ->
+                senderImageUrl = url
+            }
+        }
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.size(36.dp)
         ) {
-            if (message.profileImageUrl.isNotEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(message.profileImageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+            if (senderImageUrl.isNotEmpty()) {
+                Base64Image(
+                    base64 = senderImageUrl,
+                    modifier = Modifier.fillMaxSize()
                 )
-            } else {
+            }
+            else {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
