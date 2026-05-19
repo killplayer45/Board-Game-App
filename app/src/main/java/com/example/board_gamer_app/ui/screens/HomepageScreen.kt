@@ -46,6 +46,9 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -67,30 +70,44 @@ import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
 import com.example.board_gamer_app.ui.viewmodels.EventViewModel
 import java.util.Calendar
 
+
 @Composable
 fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, eventViewModel: EventViewModel, chatViewModel: ChatViewModel, modifier: Modifier = Modifier) {
+
     //AuthState is saved and observed
     val authState = authViewModel.authState.collectAsStateWithLifecycle()
     //used for accessing resources like Toast
     val context = LocalContext.current
+
+    //Values of events from ViewModel are tracked and saved in variable
+    val events by eventViewModel.events.collectAsStateWithLifecycle()
+    val currentTime = System.currentTimeMillis()
+    var showPastEvents by remember { mutableStateOf(false) }
+    val upcomingEvents = events.filter { it.dateTimestamp >= currentTime}
+    val pastEvents = events
+        .filter { it.dateTimestamp < currentTime }
+        .sortedByDescending { it.dateTimestamp }
+        .take(3)
+
     //LaunchedEffect enables side effects like navigation or Toast when authState.value changes (after composition)
     LaunchedEffect(authState.value) {
         when(authState.value) {
             is AuthState.Authenticated -> { eventViewModel.loadCurrentUser()
             chatViewModel.reload() }
             is AuthState.Unauthenticated -> navController.navigate("welcome")
-            is AuthState.Error -> Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            is AuthState.Error -> { Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                authViewModel.resetToAuthenticated() }
             else -> Unit
         }
     }
-    //Values of events from ViewModel are tracked and saved in variable
-    val events by eventViewModel.events.collectAsStateWithLifecycle()
-    if(eventViewModel.showDialog) {
-        AddEventDialog(eventViewModel = eventViewModel,
-            onDismiss = {eventViewModel.onDismissDialog()})
-    }
+
+
     Scaffold( bottomBar = { NavBar(navController) }) {
         innerPadding ->
+        if(eventViewModel.showAddEventDialog) {
+            AddEventDialog(eventViewModel = eventViewModel,
+                onDismiss = {eventViewModel.onDismissAddEventDialog()})
+        }
         Column(modifier = modifier
             .fillMaxSize()
             .padding(innerPadding),
@@ -98,8 +115,22 @@ fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, e
         {
             HomepageHeader(eventViewModel)
             //For dynamically generated list of events
-            LazyColumn {
-                items(events) {event ->
+            LazyColumn(modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                item {
+                    TextButton(onClick = { showPastEvents = !showPastEvents }) {
+                        Text(text = if(showPastEvents) "Ältere Termine ausblenden" else "Ältere Termine laden",
+                            color = Color.Gray)
+                    }
+                }
+                if(showPastEvents) {
+                    items(pastEvents) {event ->
+                        EventSection(event = event,
+                            onClick = { navController.navigate("event_detail/${event.eventID}")},
+                            eventViewModel = eventViewModel)
+                    }
+                }
+                items(upcomingEvents) {event ->
                     EventSection(event = event,
                         onClick = { navController.navigate("event_detail/${event.eventID}")},
                         eventViewModel = eventViewModel)
@@ -120,7 +151,7 @@ fun HomepageHeader(eventViewModel: EventViewModel, modifier: Modifier = Modifier
             text = "Termine",
             fontSize = 40.sp
         )
-        FloatingActionButton(onClick = { eventViewModel.onShowDialog()}, containerColor = Color(0xFFfcba03), contentColor = Color.White, modifier = Modifier.padding(start = 60.dp).scale(0.8F)) {
+        FloatingActionButton(onClick = { eventViewModel.onShowAddEventDialog()}, containerColor = Color(0xFFfcba03), contentColor = Color.White, modifier = Modifier.padding(start = 60.dp).scale(0.8F)) {
             Icon(painter = painterResource(R.drawable.add_48dp_000000_fill0_wght400_grad0_opsz48),
                 contentDescription = "Termin hinzufügen Button")
         }
@@ -130,9 +161,9 @@ fun HomepageHeader(eventViewModel: EventViewModel, modifier: Modifier = Modifier
 
 @Composable
 fun EventSection(event: Event, onClick: () -> Unit, eventViewModel: EventViewModel, modifier: Modifier = Modifier) {
-    val backgroundColorAttending = if(event.playersAttending.contains(eventViewModel.currentUsername)) Color(0xFF1ff262) else Color.White
-    val backgroundColorNotAttending = if(event.playersNotAttending.contains(eventViewModel.currentUsername)) Color(0xFFf52a52) else Color.White
-    val crownIcon = if(event.gameMaster == eventViewModel.currentUsername) R.drawable.crown_48dp_ffffff_fill1_wght400_grad0_opsz48 else R.drawable.crown_24dp_ffffff_fill0_wght400_grad0_opsz24
+    val backgroundColorAttending = if(event.playersAttending.contains(eventViewModel.userID)) Color(0xFF1ff262) else Color.White
+    val backgroundColorNotAttending = if(event.playersNotAttending.contains(eventViewModel.userID)) Color(0xFFf52a52) else Color.White
+    val crownIcon = if(event.gameMasterID == eventViewModel.userID) R.drawable.crown_48dp_ffffff_fill1_wght400_grad0_opsz48 else R.drawable.crown_24dp_ffffff_fill0_wght400_grad0_opsz24
     Box {
         Button(
             onClick = onClick,
@@ -155,6 +186,7 @@ fun EventSection(event: Event, onClick: () -> Unit, eventViewModel: EventViewMod
                     .wrapContentHeight(align = Alignment.CenterVertically)
             )
         }
+        if(event.playersAttending.contains(eventViewModel.userID)){
         IconButton(onClick = { eventViewModel.updateGameMaster(event.eventID)}, modifier = Modifier
             .align(Alignment.CenterEnd)
             .padding(end = 10.dp)
@@ -166,8 +198,8 @@ fun EventSection(event: Event, onClick: () -> Unit, eventViewModel: EventViewMod
                     .size(50.dp),
                 tint = Color.White
             )
-        }
-        if(event.gameMaster == eventViewModel.currentUsername) {
+        }}
+        if(event.gameMasterID == eventViewModel.userID) {
         Icon(painter = painterResource(R.drawable.check_circle_48dp_000000_fill1_wght500_grad0_opsz48),
             contentDescription = "Spielleiter Check Icon",
             modifier = Modifier
@@ -263,6 +295,8 @@ fun NavBar(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEventDialog(eventViewModel: EventViewModel, onDismiss: () -> Unit) {
+    val currentTime = System.currentTimeMillis()
+    val context = LocalContext.current
     if(eventViewModel.showCalendar){
         DatePickerModal(onDateSelected = {timestamp ->
             eventViewModel.onDateSelected(timestamp)
@@ -311,7 +345,15 @@ fun AddEventDialog(eventViewModel: EventViewModel, onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = { eventViewModel.addEvent() },
+            Button(onClick = {
+                if(eventViewModel.date.isEmpty() || eventViewModel.time.isEmpty()) {
+                    Toast.makeText(context, "Datum oder Uhrzeit fehlt", Toast.LENGTH_LONG).show()
+                }
+                else if(eventViewModel.dateTimestamp + eventViewModel.timeInMillis > currentTime) {
+                eventViewModel.addEvent()
+            }   else {
+                    Toast.makeText(context, "Datum muss in der Zukunft liegen", Toast.LENGTH_LONG).show()
+            }},
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFfcba03)
                 )){

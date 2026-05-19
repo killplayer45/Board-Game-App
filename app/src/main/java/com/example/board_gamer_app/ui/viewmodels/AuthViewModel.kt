@@ -20,14 +20,20 @@ import androidx.core.graphics.scale
 import androidx.core.graphics.createBitmap
 
 class AuthViewModel : ViewModel() {
+    //Manages authentication tasks
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    //Authentication state managed by this ViewModel, value is observed with MutableStateFlow
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
+    //Authentication state accessible to other components, read only
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    //Manages all database tasks
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     var email by mutableStateOf("")
         private set
     var password by mutableStateOf("")
+        private set
+    var passwordCheck by mutableStateOf("")
         private set
     var city by mutableStateOf("")
         private set
@@ -39,9 +45,8 @@ class AuthViewModel : ViewModel() {
         private set
     var profileImageUrl by mutableStateOf("")
         private set
-    var passwordCheck by mutableStateOf("")
-        private set
     var showPasswordDialog by mutableStateOf(false)
+        private set
     var isDarkMode by mutableStateOf(false)
 
     fun onEmailChange(value: String) { email = value }
@@ -64,6 +69,7 @@ class AuthViewModel : ViewModel() {
         loadCurrentUser()
     }
 
+    //checks for a currently signed-in user
     fun checkAuthStatus() {
         if(auth.currentUser == null) {
             _authState.value = AuthState.Unauthenticated
@@ -86,6 +92,16 @@ class AuthViewModel : ViewModel() {
                 street = user?.street ?: ""
                 profileImageUrl = user?.profileImageUrl ?: ""
             }
+    }
+
+    fun loadUserByID(userID: String, onResult: (User?) -> Unit) {
+        db.collection("users")
+            .document(userID)
+            .get()
+            .addOnSuccessListener { document ->
+                onResult(document.toObject(User::class.java))
+            }
+            .addOnFailureListener { onResult(null) }
     }
 
     fun login() {
@@ -168,6 +184,7 @@ class AuthViewModel : ViewModel() {
             ))
             .addOnCompleteListener { task ->
                 if(task.isSuccessful) {
+
                     _authState.value = AuthState.Info("Daten wurden geändert!")
                 } else {
                     _authState.value = AuthState.Error(task.exception?.message ?: "Daten konnten nicht geändert werden")
@@ -233,6 +250,7 @@ class AuthViewModel : ViewModel() {
             }
     }
 
+    //for login screen
     fun resetPassword() {
         if(email.isEmpty()) {
             _authState.value = AuthState.Error("Bitte Email eingeben")
@@ -249,6 +267,7 @@ class AuthViewModel : ViewModel() {
             }
     }
 
+    //for settings screen
     fun updatePassword() {
         if(password.isEmpty()) {
             _authState.value = AuthState.Error("Passwort fehlt")
@@ -265,6 +284,10 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Error(task.exception?.message ?: "Passwort konnte nicht geändert werden")
             }
         }
+    }
+
+    fun resetToAuthenticated() {
+        _authState.value = AuthState.Authenticated
     }
 }
 

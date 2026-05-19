@@ -16,16 +16,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.Color
 import com.example.board_gamer_app.data.model.Message
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
 import com.example.board_gamer_app.ui.viewmodels.ChatViewModel
@@ -36,6 +31,7 @@ fun ChatScreen(navController: NavController, authViewModel: AuthViewModel, chatV
     val messages = chatViewModel.messages
     val listState = rememberLazyListState()
 
+    //scrolls to the last message in chat
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -107,7 +103,6 @@ fun ChatScreen(navController: NavController, authViewModel: AuthViewModel, chatV
             }
         }
     }
-
 }
 
 @Composable

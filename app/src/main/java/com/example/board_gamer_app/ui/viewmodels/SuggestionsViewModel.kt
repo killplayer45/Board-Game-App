@@ -12,37 +12,40 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class SuggestionsViewModel : ViewModel() {
-    private val db = FirebaseFirestore.getInstance()
-    private val auth = FirebaseAuth.getInstance()
-    //Suggestions State
-    private val _suggestions = MutableStateFlow<List<GameSuggestion>>(emptyList())
-    val suggestions: StateFlow<List<GameSuggestion>> = _suggestions.asStateFlow()
-    //Reviews State
-    private val _reviews = MutableStateFlow<List<HostReview>>(emptyList())
-    val reviews: StateFlow<List<HostReview>> = _reviews.asStateFlow()
+    private val db = FirebaseFirestore.getInstance()        //manages database tasks
+    private val _suggestions = MutableStateFlow<List<GameSuggestion>>(emptyList())      //Suggestions State managed by this ViewModel
+    val suggestions: StateFlow<List<GameSuggestion>> = _suggestions.asStateFlow()               //Suggestions State accessible for other components (read-only)
+    private val _reviews = MutableStateFlow<List<HostReview>>(emptyList())              //Reviews State managed by this ViewModel
+    val reviews: StateFlow<List<HostReview>> = _reviews.asStateFlow()                           //Reviews State accessible for other components (read-only)
 
     //Dialog State
-    var showAddDialog by mutableStateOf(false)
-        private set
     var titleInput by mutableStateOf("")
         private set
     var descriptionInput by mutableStateOf("")
         private set
     var reviewInput by mutableStateOf("")
         private set
-    var selectedRating by mutableStateOf(0)
+    var selectedRating by mutableIntStateOf(0)
         private set
+    var deleteSuggestionDialog by mutableStateOf(false)
+        private set
+    var deleteReviewDialog by mutableStateOf(false)
+        private set
+    var selectedSuggestion by mutableStateOf("")        //for deleting suggestion
+    var selectedReview by mutableStateOf("")            //for deleting review
 
     fun onTitleChange(value: String) { titleInput = value }
     fun onDescriptionChange(value: String) { descriptionInput = value }
     fun onReviewChange(value: String) { reviewInput = value }
     fun onRatingChange(value: Int) { selectedRating = value }
-    fun onShowDialog() { showAddDialog = true }
     fun onDismissDialog() {
-        showAddDialog = false
         titleInput = ""
         descriptionInput = ""
     }
+    fun onDeleteSuggestionDialog() { deleteSuggestionDialog = true }
+    fun onDismissDeleteSuggestionDialog() { deleteSuggestionDialog = false }
+    fun onDeleteReviewDialog() { deleteReviewDialog = true }
+    fun onDismissDeleteReviewDialog() { deleteReviewDialog = false }
 
     //load suggestions for specific event
     fun loadSuggestions(eventID: String) {
@@ -56,6 +59,7 @@ class SuggestionsViewModel : ViewModel() {
             }
     }
 
+    //load reviews for an event
     fun loadReviews(eventID: String) {
         db.collection("reviews")
             .whereEqualTo("eventID", eventID)
@@ -67,6 +71,7 @@ class SuggestionsViewModel : ViewModel() {
             }
     }
 
+    //add username to positive or negative votes list
     fun vote(suggestionID: String, positive: Boolean, currentUsername: String) {
         val field = if(positive) "positiveVotes" else "negativeVotes"
         val oppositeField = if(positive) "negativeVotes" else "positiveVotes"
@@ -112,5 +117,19 @@ class SuggestionsViewModel : ViewModel() {
             .addOnSuccessListener {
                 reviewInput = ""
                 selectedRating = 0 }
+    }
+
+    fun deleteSuggestion(suggestionID: String) {
+        db.collection("suggestions")
+            .document(suggestionID)
+            .delete()
+        onDismissDeleteSuggestionDialog()
+    }
+
+    fun deleteRating(reviewID: String) {
+        db.collection("reviews")
+            .document(reviewID)
+            .delete()
+        onDismissDeleteReviewDialog()
     }
 }

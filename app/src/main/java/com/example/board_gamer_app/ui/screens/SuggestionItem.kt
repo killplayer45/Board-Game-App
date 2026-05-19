@@ -1,5 +1,6 @@
 package com.example.board_gamer_app.ui.screens
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,17 +20,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.board_gamer_app.data.model.GameSuggestion
+import com.example.board_gamer_app.ui.viewmodels.SuggestionsViewModel
 
 @Composable
 fun SuggestionItem(
     suggestion: GameSuggestion,
     currentUsername: String,
-    onVote: (Boolean) -> Unit
+    onVote: (Boolean) -> Unit,
+    suggestionsViewModel: SuggestionsViewModel,
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .combinedClickable(onLongClick = { suggestionsViewModel.onDeleteSuggestionDialog()
+                                             suggestionsViewModel.selectedSuggestion = suggestion.id }, onClick = {})
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

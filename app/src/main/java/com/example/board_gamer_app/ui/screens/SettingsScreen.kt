@@ -104,8 +104,10 @@ fun SettingsScreen(navController: NavController, authViewModel: AuthViewModel, c
     LaunchedEffect(authState.value) {
         when(authState.value) {
             is AuthState.Unauthenticated -> navController.navigate("login")
-            is AuthState.Error -> Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-            is AuthState.Info -> Toast.makeText(context, (authState.value as AuthState.Info).message, Toast.LENGTH_LONG).show()
+            is AuthState.Error -> { Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                authViewModel.resetToAuthenticated() }
+            is AuthState.Info -> { Toast.makeText(context, (authState.value as AuthState.Info).message, Toast.LENGTH_LONG).show()
+                authViewModel.resetToAuthenticated() }
             else -> Unit
         }
     }

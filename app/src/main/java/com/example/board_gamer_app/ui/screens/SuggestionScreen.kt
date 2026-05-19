@@ -2,6 +2,7 @@ package com.example.board_gamer_app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,8 +24,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.board_gamer_app.data.model.Event
 import com.example.board_gamer_app.ui.viewmodels.SuggestionsViewModel
 import com.example.board_gamer_app.data.model.HostReview
+import com.example.board_gamer_app.data.model.User
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
 import com.example.board_gamer_app.ui.viewmodels.EventViewModel
@@ -40,11 +43,14 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
     LaunchedEffect(authState.value) {
         when(authState.value) {
             is AuthState.Unauthenticated -> navController.navigate("login")
-            is AuthState.Error -> Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-            is AuthState.Info -> Toast.makeText(context, (authState.value as AuthState.Info).message, Toast.LENGTH_LONG).show()
+            is AuthState.Error -> { Toast.makeText(context, (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                authViewModel.resetToAuthenticated() }
+            is AuthState.Info -> { Toast.makeText(context, (authState.value as AuthState.Info).message, Toast.LENGTH_LONG).show()
+                authViewModel.resetToAuthenticated() }
             else -> Unit
         }
     }
+
     val suggestions by suggestionsViewModel.suggestions.collectAsStateWithLifecycle()
     val reviews by suggestionsViewModel.reviews.collectAsStateWithLifecycle()
     val currentUsername = eventViewModel.currentUsername
@@ -59,12 +65,22 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
     // Determine the "Game of the Evening" (highest positive votes)
     val gameOfTheEvening = suggestions.maxByOrNull { it.positiveVotesCount }?.takeIf { it.positiveVotesCount > 0 }
 
-    var expandedTermin by remember { mutableStateOf(false) }
     var selectedTermin by remember { mutableStateOf("") }
 
     LaunchedEffect(reviews) {
         if(selectedTermin.isEmpty() && reviews.isNotEmpty()) {
             selectedTermin = reviews.first().eventID
+        }
+    }
+
+    var gameMasterUser by remember { mutableStateOf<User?>(null)}
+    LaunchedEffect(event.gameMasterID) {
+        if(event.gameMasterID.isNotEmpty()) {
+            authViewModel.loadUserByID(event.gameMasterID) { user ->
+                gameMasterUser = user
+            }
+        } else {
+            gameMasterUser = null
         }
     }
     Scaffold( bottomBar = { NavBar(navController) }) {
@@ -73,9 +89,35 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
             .fillMaxSize()
             .padding(innerPadding)) {
             Spacer(modifier = Modifier.height(20.dp))
-            Text(text = "Terminübersicht",
-                fontSize = 20.sp,
-                modifier = Modifier.align(Alignment.CenterHorizontally))
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Terminübersicht",
+                    fontSize = 30.sp,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                IconButton(onClick = { eventViewModel.onDeleteEventDialog() }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Termin löschen",
+                        tint = Color.Red,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
+            if(eventViewModel.showDeleteEventDialog) {
+                DeleteEventDialog(onConfirm = { eventViewModel.deleteEvent(eventID)
+                                         navController.navigate("homepage")},
+                    onDismiss = { eventViewModel.onDismissDeleteEventDialog() })
+            }
+            if(suggestionsViewModel.deleteSuggestionDialog) {
+                DeleteSuggestionDialog(onConfirm = { suggestionsViewModel.deleteSuggestion(suggestionsViewModel.selectedSuggestion)
+                    },
+                    onDismiss = { suggestionsViewModel.onDismissDeleteSuggestionDialog() })
+            }
+            if(suggestionsViewModel.deleteReviewDialog) {
+                DeleteRatingDialog(onConfirm = { suggestionsViewModel.deleteRating(suggestionsViewModel.selectedReview) },
+                    onDismiss = { suggestionsViewModel.onDismissDeleteReviewDialog() })
+            }
             Spacer(modifier = Modifier.height(20.dp))
             LazyColumn(
                 modifier = Modifier
@@ -118,7 +160,11 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                RoundedCornerShape(12.dp)
+                            )
                             .padding(12.dp)
                     ) {
                         OutlinedTextField(
@@ -158,10 +204,11 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         currentUsername = currentUsername,
                         onVote = { isPositive ->
                             suggestionsViewModel.vote(suggestion.id, isPositive, currentUsername)
-                        }
+                        }, suggestionsViewModel = suggestionsViewModel
                     )
                 }
-
+                item { Spacer(modifier = Modifier.height(20.dp))
+                    PlayerList(event = event, eventViewModel = eventViewModel) }
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(text = "Gastgeberbewertung", fontSize = 24.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
@@ -173,7 +220,7 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if(event.gameMaster.isNotEmpty()) {
+                        if(event.gameMasterID.isNotEmpty()) {
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -189,17 +236,19 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            if(event.gameMaster.isNotEmpty()) {
-                                Text(
-                                    event.gameMaster,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    "${event.gameMasterStreet}, ${event.gameMasterZip} ${event.gameMasterCity}",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
+                            if(event.gameMasterID.isNotEmpty()) {
+                                gameMasterUser?.let { gm ->
+                                    Text(
+                                        gm.username,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        "${gm.street}, ${gm.zip} ${gm.city}",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
                             } else {
                                 Text(text = "Kein Spielleiter eingetragen",
                                     fontWeight = FontWeight.Bold,
@@ -215,7 +264,9 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp),
+                                .padding(vertical = 4.dp)
+                                .combinedClickable(onLongClick = { suggestionsViewModel.onDeleteReviewDialog()
+                                    suggestionsViewModel.selectedReview = review.id }, onClick = {}),
                             horizontalArrangement = Arrangement.Start
                         ) {
                             Surface(
@@ -275,7 +326,11 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                             IconButton(onClick = {
-                                suggestionsViewModel.addReview(eventID, currentUsername)
+                                if(event.gameMasterID.isNotEmpty()) {
+                                    suggestionsViewModel.addReview(eventID, currentUsername)
+                                } else {
+                                    Toast.makeText(context, "Kein Spielleiter zur Bewertung eingetragen", Toast.LENGTH_LONG).show()
+                                }
                             }) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.Send,
@@ -287,6 +342,87 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
                         shape = RoundedCornerShape(24.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteEventDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Termin löschen") },
+        text = { Text("Möchtest du den Termin wirklich löschen?")},
+        confirmButton = { Button(onClick = { onConfirm() }) {
+            Text("Bestätigen")
+        }},
+        dismissButton = { Button(onClick = { onDismiss() }) {
+            Text("Abbrechen")
+        } }
+    )
+}
+
+@Composable
+fun DeleteSuggestionDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Spielvorschlag löschen") },
+        text = { Text("Möchtest du den Spielvorschlag wirklich löschen?")},
+        confirmButton = { Button(onClick = { onConfirm() }) {
+            Text("Bestätigen")
+        }},
+        dismissButton = { Button(onClick = { onDismiss() }) {
+            Text("Abbrechen")
+        } }
+    )
+}
+
+@Composable
+fun DeleteRatingDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text("Bewertung löschen") },
+        text = { Text("Möchtest du die Bewertung wirklich löschen?")},
+        confirmButton = { Button(onClick = { onConfirm() }) {
+            Text("Bestätigen")
+        }},
+        dismissButton = { Button(onClick = { onDismiss() }) {
+            Text("Abbrechen")
+        } }
+    )
+}
+
+
+@Composable
+fun PlayerList(event: Event, eventViewModel: EventViewModel) {
+    var attendingPlayers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var notAttendingPlayers by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    LaunchedEffect(event.eventID) {
+        eventViewModel.loadPlayerNames(event.playersAttending) { attendingPlayers = it }
+        eventViewModel.loadPlayerNames(event.playersNotAttending) { notAttendingPlayers = it }
+    }
+    Column {
+        Text(
+            text = "Zusagen",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (attendingPlayers.isEmpty()) {
+            Text(text = "Noch keine Zusagen")
+        } else {
+            attendingPlayers.values.forEach { name ->
+                Text(name, fontSize = 14.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = "Absagen",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (notAttendingPlayers.isEmpty()) {
+            Text("Noch keine Absagen")
+        } else {
+            notAttendingPlayers.values.forEach { name ->
+                Text(name, fontSize = 14.sp)
             }
         }
     }
