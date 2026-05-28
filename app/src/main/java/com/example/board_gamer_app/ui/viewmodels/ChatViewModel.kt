@@ -2,6 +2,7 @@ package com.example.board_gamer_app.ui.viewmodels
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.example.board_gamer_app.data.model.Message
 import com.example.board_gamer_app.data.model.User
 import com.google.firebase.auth.FirebaseAuth
@@ -9,11 +10,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.util.Calendar
 import java.util.Locale
 
-class ChatViewModel : ViewModel() {
-    //Manages database tasks
-    private val db = FirebaseFirestore.getInstance()
-    //Manages authentication tasks
-    private val auth = FirebaseAuth.getInstance()
+class ChatViewModel(private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+                    private val auth: FirebaseAuth = FirebaseAuth.getInstance()) : ViewModel() {
 
     var currentUsername = ""
     var currentProfileImageUrl = ""
@@ -81,5 +79,11 @@ class ChatViewModel : ViewModel() {
         messages.clear()
         currentUsername = ""
         loadCurrentUser()
+    }
+}
+
+class ChatViewModelFactory: ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return ChatViewModel() as T
     }
 }

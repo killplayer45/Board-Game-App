@@ -63,7 +63,7 @@ fun LoginHeaderText(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = "Gibt deine Daten ein, um fortzufahren.",
+            text = "Gib deine Daten ein, um fortzufahren.",
             fontSize = 20.sp,
             textAlign = TextAlign.Center,
             color = Color.LightGray,

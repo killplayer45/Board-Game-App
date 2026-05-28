@@ -1,4 +1,4 @@
-package com.example.board_gamer_app.ui.screens
+package com.example.board_gamer_app.ui.component
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column

@@ -2,17 +2,16 @@ package com.example.board_gamer_app.ui.viewmodels
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.example.board_gamer_app.data.model.*
-//import com.example.board_gamer_app.util.updateVote
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SuggestionsViewModel : ViewModel() {
-    private val db = FirebaseFirestore.getInstance()        //manages database tasks
+class SuggestionsViewModel(private val db: FirebaseFirestore = FirebaseFirestore.getInstance()) : ViewModel() {
+
     private val _suggestions = MutableStateFlow<List<GameSuggestion>>(emptyList())      //Suggestions State managed by this ViewModel
     val suggestions: StateFlow<List<GameSuggestion>> = _suggestions.asStateFlow()               //Suggestions State accessible for other components (read-only)
     private val _reviews = MutableStateFlow<List<HostReview>>(emptyList())              //Reviews State managed by this ViewModel
@@ -131,5 +130,11 @@ class SuggestionsViewModel : ViewModel() {
             .document(reviewID)
             .delete()
         onDismissDeleteReviewDialog()
+    }
+}
+
+class SuggestionsViewModelFactory: ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return SuggestionsViewModel() as T
     }
 }

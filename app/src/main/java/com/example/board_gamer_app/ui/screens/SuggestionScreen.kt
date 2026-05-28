@@ -18,16 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.board_gamer_app.data.model.Event
 import com.example.board_gamer_app.ui.viewmodels.SuggestionsViewModel
-import com.example.board_gamer_app.data.model.HostReview
 import com.example.board_gamer_app.data.model.User
+import com.example.board_gamer_app.ui.component.SuggestionItem
 import com.example.board_gamer_app.ui.viewmodels.AuthState
 import com.example.board_gamer_app.ui.viewmodels.AuthViewModel
 import com.example.board_gamer_app.ui.viewmodels.EventViewModel

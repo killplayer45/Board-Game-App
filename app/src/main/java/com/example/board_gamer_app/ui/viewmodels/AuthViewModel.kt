@@ -17,17 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.ByteArrayOutputStream
 import androidx.core.graphics.scale
-import androidx.core.graphics.createBitmap
+import androidx.lifecycle.ViewModelProvider
 
-class AuthViewModel : ViewModel() {
-    //Manages authentication tasks
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+class AuthViewModel(private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+                    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()) : ViewModel() {
+
     //Authentication state managed by this ViewModel, value is observed with MutableStateFlow
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
     //Authentication state accessible to other components, read only
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
-    //Manages all database tasks
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 
     var email by mutableStateOf("")
         private set
@@ -289,6 +287,10 @@ class AuthViewModel : ViewModel() {
     fun resetToAuthenticated() {
         _authState.value = AuthState.Authenticated
     }
+
+    fun setUnauthenticated() {
+        _authState.value = AuthState.Unauthenticated
+    }
 }
 
 sealed class AuthState{
@@ -297,4 +299,10 @@ sealed class AuthState{
     object Loading: AuthState()
     data class Error(val message: String): AuthState()
     data class Info (val message: String): AuthState()
+}
+
+class AuthViewModelFactory: ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return AuthViewModel() as T
+    }
 }

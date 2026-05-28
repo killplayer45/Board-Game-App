@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.example.board_gamer_app.data.model.Event
 import com.example.board_gamer_app.data.model.User
 import com.google.firebase.auth.FirebaseAuth
@@ -17,9 +18,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class EventViewModel : ViewModel() {
-    private val db = FirebaseFirestore.getInstance()            //Manages reading/writing data
-    private val auth = FirebaseAuth.getInstance()               //Manages authentication tasks
+class EventViewModel(private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+                     private val auth: FirebaseAuth = FirebaseAuth.getInstance()) : ViewModel() {
+
     private val _events = MutableStateFlow<List<Event>>(emptyList())    //List of Events, changes are tracked with MutableStateFlow, writing only by ViewModel
     val events: StateFlow<List<Event>> = _events.asStateFlow()  //Events which can be accessed by composables
 
@@ -179,5 +180,11 @@ class EventViewModel : ViewModel() {
         db.collection("events")
             .document(eventID)
             .delete()
+    }
+}
+
+class EventViewModelFactory : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return EventViewModel() as T
     }
 }

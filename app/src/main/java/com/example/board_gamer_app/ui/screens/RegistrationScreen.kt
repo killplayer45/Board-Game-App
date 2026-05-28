@@ -181,9 +181,7 @@ fun RegistrationButton(authViewModel: AuthViewModel, navController: NavControlle
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()) {
         Button(
-            onClick = {
-                authViewModel.signup()
-                },
+            onClick = { authViewModel.signup() },
             modifier = Modifier
                 .width(300.dp)
                 .padding(top = 40.dp),
@@ -195,9 +193,7 @@ fun RegistrationButton(authViewModel: AuthViewModel, navController: NavControlle
             Text(text = "Registrieren",
                 fontSize = 20.sp)
         }
-        TextButton(onClick = {
-            navController.navigate("login")
-        }) {
+        TextButton(onClick = { navController.navigate("login") }) {
             Text(text = "Schon einen Account? Zum Login")
         }
     }
