@@ -85,7 +85,7 @@ fun HomepageScreen(navController: NavController, authViewModel: AuthViewModel, e
     val upcomingEvents = events.filter { it.dateTimestamp >= currentTime}
     val pastEvents = events
         .filter { it.dateTimestamp < currentTime }
-        .sortedByDescending { it.dateTimestamp }
+        .sortedBy { it.dateTimestamp }
         .take(3)
 
     //LaunchedEffect enables side effects like navigation or Toast when authState.value changes (after composition)

@@ -104,7 +104,8 @@ fun SuggestionScreen(navController: NavController, eventID: String, eventViewMod
             }
             if(eventViewModel.showDeleteEventDialog) {
                 DeleteEventDialog(onConfirm = { eventViewModel.deleteEvent(eventID)
-                                         navController.navigate("homepage")},
+                    eventViewModel.onDismissDeleteEventDialog()
+                    navController.navigate("homepage")},
                     onDismiss = { eventViewModel.onDismissDeleteEventDialog() })
             }
             if(suggestionsViewModel.deleteSuggestionDialog) {
